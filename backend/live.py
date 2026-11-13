@@ -39,8 +39,8 @@ async def run_live(broadcast_async):
   print(f"target={Cap.TARGET_EXE} running={st['dota_running']} cable={st['cable_index']} {st['cable_info']}")
   loop = st["cable_index"]
   if loop is None:
-    print("No CABLE Output found: using system loopback of the default speaker, "
-          "which also picks up Discord/music. Install VB-Cable for Dota-only audio.")
+    print("No CABLE Output found: will use WASAPI process loopback, i.e. only the "
+          "target app's audio. Install VB-Cable if you prefer a cable route.", flush=True)
 
   buf = []
   def mt_translate(text: str, src: str) -> str:
