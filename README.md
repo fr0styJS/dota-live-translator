@@ -152,3 +152,11 @@ See `NOTICE.md` for third-party licences - notably **NLLB-200 is CC-BY-NC-4.0
 (non-commercial)** - and the unofficial/Valve trademark disclaimer.
 
 MIT licensed (`LICENSE`).
+
+## Credits
+
+Built by **Fr0styDev**. Written with substantial AI assistance from the
+**DeepSeek V4.1 Flash 1017** agent in OpenCode - the WASAPI process-loopback
+capture, the watcher/watchdog tooling and most of this documentation came from
+it. Disclosed for transparency (and because some jurisdictions require human
+authorship for copyright); licensing is unaffected.
