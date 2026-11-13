@@ -1,0 +1,19 @@
+# runtime data, not source
+logs/
+*.log
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# model / HF cache, if anyone points it inside the repo
+.cache/
+models/
+hf-cache/
+
+# editor / OS noise
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+*.swp

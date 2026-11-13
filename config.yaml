@@ -1,0 +1,21 @@
+sample_rate: 16000
+vad:
+  window_ms: 512
+  min_speech_ms: 600
+  silence_ms: 400
+asr:
+  model: large-v3-turbo
+  compute_type: int8_float16
+  device: cuda
+  languages: [ru, en, es, uk, tl, pt]
+mt:
+  model: facebook/nllb-200-distilled-600M
+  device: cuda
+  target: eng_Latn
+server:
+  port: 5111
+  host: 127.0.0.1
+dota:
+  process: dota2.exe
+  idle_suspend_sec: 30
+glossary_lock: [ss, rosh, gank, b, push, stack, pull, ward, tide, tidehunter, mid, top, bot, carry, support, rosh, smoke, dive]

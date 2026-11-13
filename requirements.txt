@@ -1,0 +1,16 @@
+# Dota Live Translator - RTX 4070 / py3.12 venv
+--extra-index-url https://download.pytorch.org/whl/cu121
+torch
+faster-whisper
+transformers
+accelerate
+sentencepiece
+sacremoses
+sounddevice
+soundcard
+comtypes
+numpy
+websockets
+onnxruntime-gpu
+silero-vad
+pyyaml

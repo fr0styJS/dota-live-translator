@@ -1,0 +1,55 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dota Translator — 2nd monitor</title>
+<style>
+body{background:#0e1116;color:#e6e9ef;font:14px/1.45 system-ui;margin:0;padding:12px}
+h1{font-size:15px;margin:0 0 8px}#status{font-size:12px;color:#8b93a1;margin-bottom:10px}
+.card{background:#171c24;border:1px solid #262d38;border-radius:8px;padding:8px 10px;margin:8px 0}
+.badge{display:inline-block;font-size:11px;padding:1px 7px;border-radius:20px;margin-right:6px}
+.RU{background:#3b2f2f;color:#ff9d9d}.EN{background:#1f3325;color:#8fe3a8}
+.ES{background:#33301f;color:#f0d67a}.UK{background:#22303f;color:#8fc3ff}.TL{background:#2f2b3d;color:#c9a8ff}.PT{background:#2c3a2e;color:#a8e6c9}
+.src{color:#9aa3b2;font-size:13px}.en{font-size:15px;margin-top:2px}
+</style>
+<h1>Dota Live Translator</h1><div id="status">connecting…</div>
+<div id="help" style="display:none;background:#241d12;border:1px solid #5a441f;border-radius:8px;padding:8px 10px;font-size:13px;margin-bottom:8px">Backend not running. From the repo folder run:<br><code>.venv\Scripts\python.exe backend\app.py</code><br>Then refresh, or wait 10s for auto-retry.</div>
+<div id="log"></div>
+<script>
+let fails = 0;
+const WS_URL = "ws://127.0.0.1:5112";
+const log = document.getElementById("log"), st = document.getElementById("status");
+function add(m){
+  const d = document.createElement("div"); d.className = "card";
+  d.innerHTML = `<span class="badge ${m.src}">${m.src}</span><span class="src"></span><div class="en"></div>`;
+  d.querySelector(".src").textContent = m.src_text;
+  d.querySelector(".en").textContent = (m.passthrough ? "[EN] " : "") + m.en + (m.lag != null ? ` (${m.lag}s)` : "");
+  log.prepend(d);
+  while (log.children.length > 50) log.lastChild.remove();
+}
+function connect(){
+  fails++;
+  let ws;
+  try { ws = new WebSocket(WS_URL); } catch(e){ offline(); return; }
+  ws.onopen = () => { fails = 0; st.textContent = "live — " + WS_URL; hideHelp(); };
+  ws.onmessage = e => { try { add(JSON.parse(e.data)); } catch(_){} };
+  ws.onclose = () => {
+    if (fails >= 2) { offline(); return; } // stop loop, show help + demo
+    st.textContent = "reconnecting… (" + fails + ")";
+    setTimeout(connect, 2000);
+  };
+  ws.onerror = () => { try{ws.close();}catch(_){} };
+}
+let demoShown = false;
+function offline(){
+  st.textContent = "backend offline — showing demo, will retry in 10s";
+  showHelp();
+  if (!demoShown) {
+    demoShown = true;
+    [["RU","Hello this is an example"],["EN","Missing Tidehunter"],
+     ["RU","Тайд пропал с мида, осторожно"]].forEach(([s,t],i)=>
+      setTimeout(()=>add({src:s,src_text:t,en:t,passthrough:s==="EN"}), 500*(i+1)));
+  }
+  setTimeout(()=>{ fails = 0; connect(); }, 10000);
+}
+function showHelp(){ document.getElementById("help").style.display = "block"; }
+function hideHelp(){ document.getElementById("help").style.display = "none"; }
+connect();
+</script>
