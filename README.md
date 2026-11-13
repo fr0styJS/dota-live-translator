@@ -136,6 +136,7 @@ ward, smoke, ...) by substituting placeholders before translation.
 | `port 5111 in use` | another backend is running: close it, or use `--port` |
 | no subtitle window | overlay is a separate process: `ui-overlay\overlay.py`; it pops up bottom-centre of the primary screen |
 | repeated console windows flashing | see `tools/procwatch.ps1` to identify the spawner; this was caused by shelling out to console apps from a windowless process |
+| two python processes per launch | your Python install's venv template is the `py.exe` launcher instead of the interpreter - re-run `setup.ps1`, which restores stock binaries in `.venv\Scripts` |
 
 Logs live in `logs/` (`backend.log`, `watch.log`, `watch.heartbeat`,
 `watchdog.log`, `watch.fault.log`).

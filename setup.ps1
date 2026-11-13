@@ -50,6 +50,28 @@ if ($needVenv) {
 }
 if (-not (Test-Path $venvPyw)) { throw "venv looks broken: $venvPyw missing" }
 
+# Some Python installs ship a damaged venv template: Lib\venv\scripts\nt\python.exe
+# is a copy of the py.exe launcher instead of the interpreter. Then every process
+# starts as launcher + real interpreter (the "phantom twin" symptom) and the
+# module search path is resolved the slow way. Restore stock binaries, which is
+# exactly what a healthy `python -m venv` does.
+$cfg = Join-Path $root ".venv\pyvenv.cfg"
+if (Test-Path $cfg) {
+  $line = (Select-String -Path $cfg -Pattern '^executable\s*=\s*(.+)$').Matches
+  if ($line) {
+    $baseExe = $line[0].Groups[1].Value.Trim()
+    $baseDir = Split-Path $baseExe
+    foreach ($pair in @(@("python.exe", "python.exe"), @("pythonw.exe", "pythonw.exe"))) {
+      $src = Join-Path $baseDir $pair[0]
+      $dst = Join-Path $root ".venv\Scripts\$($pair[1])"
+      if ((Test-Path $src) -and ((Get-Item $src).Length -ne (Get-Item $dst).Length)) {
+        Copy-Item $src $dst -Force
+        Write-Host "restored stock $($pair[1]) from $baseDir (venv template was the py.exe launcher)" -ForegroundColor Yellow
+      }
+    }
+  }
+}
+
 Write-Host "installing torch (CUDA 12.6 wheel, ~2.5 GB on first run)..." -ForegroundColor Cyan
 # Explicit index: PyPI's Windows torch is CPU-only, and --extra-index-url alone
 # lets PyPI win the version comparison (that is how you end up with +cpu torch).
