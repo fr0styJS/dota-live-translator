@@ -1,4 +1,4 @@
-"""Live pipeline: loopback -> Silero VAD (CPU) -> faster-whisper (CUDA) -> NLLB (CUDA)."""
+﻿"""Live pipeline: loopback -> Silero VAD (CPU) -> faster-whisper (CUDA) -> NLLB (CUDA)."""
 import time, numpy as np, glossary as G, yaml, pathlib
 CFG = yaml.safe_load(open(pathlib.Path(__file__).parent.parent / "config.yaml"))
 
@@ -12,7 +12,7 @@ async def run_live(broadcast_async):
   import torch
   from silero_vad import load_silero_vad, get_speech_timestamps
 
-  print("loading VAD (CPU)...")
+  print("loading VAD (CPU)...", flush=True)
   vad = load_silero_vad()
 
   dev = (CFG["asr"].get("device") or "cuda").lower()
@@ -26,9 +26,9 @@ async def run_live(broadcast_async):
   if dev == "cpu" and "float16" in ctype:
     ctype = "int8"  # float16 matmul is not available on CPU
 
-  print(f"loading ASR {CFG['asr']['model']} {ctype} {dev}...")
+  print(f"loading ASR {CFG['asr']['model']} {ctype} {dev}...", flush=True)
   asr = WhisperModel(CFG["asr"]["model"], device=dev, compute_type=ctype)
-  print(f"loading MT {CFG['mt']['model']} {mt_dev}...")
+  print(f"loading MT {CFG['mt']['model']} {mt_dev}...", flush=True)
   mt_id = CFG["mt"]["model"]
   tok = AutoTokenizer.from_pretrained(mt_id)
   mt = AutoModelForSeq2SeqLM.from_pretrained(mt_id).to(mt_dev).eval()
@@ -75,14 +75,19 @@ async def run_live(broadcast_async):
     try:
       from procloop import start_process_capture
       sup = start_process_capture(Cap.TARGET_EXE, buf.append, log=print)
+      # Wait only for a real failure signal. "No buffers yet" is normal: the target
+      # may not be running, and the supervisor attaches as soon as its pid appears.
       deadline = time.time() + 8.0
       while time.time() < deadline and not buf:
+        if sup.last_error is not None:
+          break
+        if sup.capturing:
+          break  # attached, simply quiet so far
         time.sleep(0.2)
-      if buf:
-        capture_kind = f"WASAPI process loopback ({Cap.TARGET_EXE} only)"
-      else:
+      if sup.last_error is not None:
         sup.stop()
-        raise RuntimeError("no audio buffers from process loopback")
+        raise sup.last_error
+      capture_kind = f"WASAPI process loopback ({Cap.TARGET_EXE} only)"
     except Exception as e:
       print(f"process loopback unavailable ({e!r}) - falling back to system loopback",
             flush=True)
@@ -116,8 +121,8 @@ async def run_live(broadcast_async):
             time.sleep(2)
       threading.Thread(target=pump, daemon=True).start()
       capture_kind = "system loopback (everything on the default speaker)"
-  print(f"capture: {capture_kind}")
-  print(f"live. gated on {Cap.TARGET_EXE}: listening only while it runs...")
+  print(f"capture: {capture_kind}", flush=True)
+  print(f"live. gated on {Cap.TARGET_EXE}: listening only while it runs...", flush=True)
   # Utterance chunking: accumulate while speech, finalize on pause.
   # Old 1.2s sliding windows caused 3-word fragments + duplicate GPU work.
   SPEECH_MIN, SILENCE_END, MAX_UTTER = 1.0, 0.9, 6.0
@@ -139,7 +144,7 @@ async def run_live(broadcast_async):
     out = []
     skipped = 0
     for s in segs:
-      # whisper hallucinates names/phrases on music/silence — drop low-confidence junk
+      # whisper hallucinates names/phrases on music/silence â€” drop low-confidence junk
       if getattr(s, "no_speech_prob", 0) > 0.6 or getattr(s, "avg_logprob", 0) < -1.0:
         skipped += 1
         continue
@@ -148,7 +153,7 @@ async def run_live(broadcast_async):
       # known fixed-string hallucinations ("Subtitles by DimaTorzok" etc.)
       if not txt or "torzok" in low or low in (
           "thank you for watching", "thanks for watching", "please subscribe",
-          "bye", "...", "спасибо за просмотр", "субтитры сделал dimatorzok"):
+          "bye", "...", "ÑÐ¿Ð°ÑÐ¸Ð±Ð¾ Ð·Ð° Ð¿Ñ€Ð¾ÑÐ¼Ð¾Ñ‚Ñ€", "ÑÑƒÐ±Ñ‚Ð¸Ñ‚Ñ€Ñ‹ ÑÐ´ÐµÐ»Ð°Ð» dimatorzok"):
         skipped += 1
         continue
       # prompt echo: whisper sometimes repeats our vocab prompt on weak audio.
@@ -179,7 +184,7 @@ async def run_live(broadcast_async):
     if not Cap.is_dota_running():
       idle_n += 1
       if idle_n == 2:
-        print(f"{Cap.TARGET_EXE} not running — suspended, 0% GPU. Start it to resume.")
+        print(f"{Cap.TARGET_EXE} not running â€” suspended, 0% GPU. Start it to resume.")
       buf.clear()
       utter = np.zeros(0, dtype=np.float32)
       silence = 0.0

@@ -22,7 +22,7 @@ Measured on an RTX 4070: ~2-4 s lag for a finished utterance, ~3-4 GB VRAM.
 | | |
 |---|---|
 | OS | Windows 11 (build 20348+; WASAPI process loopback) |
-| GPU | NVIDIA, ~4 GB free VRAM (CUDA 12.1 build of torch) |
+| GPU | NVIDIA, ~4 GB free VRAM (CUDA 12.6 torch build, driver ~560+) |
 | Python | 3.12 |
 | Disk | ~3 GB models + ~5 GB venv |
 | Game | Dota 2, voice chat enabled, a language in `config.yaml` |

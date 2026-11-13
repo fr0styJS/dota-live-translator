@@ -1,8 +1,19 @@
-# Dota Live Translator - RTX 4070 / py3.12 venv
---extra-index-url https://download.pytorch.org/whl/cu121
-torch
+# Dota Live Translator - py3.12 venv, CUDA 12.6 build of torch
+#
+# torch MUST come from the PyTorch CUDA index: PyPI's Windows wheel is CPU-only,
+# and with a plain --extra-index-url pip prefers the newer PyPI build, leaving you
+# with "Torch not compiled with CUDA enabled". setup.ps1 installs torch first with
+# --index-url; the +cu126 pin below is what a manual `pip install -r` needs too.
+#
+# CUDA 12.6 needs a recent NVIDIA driver (~560+, tested on 621.01). cu121 wheels
+# stop at torch 2.5.1, which is too old for transformers >= 5 (and for the
+# torch>=2.6 guard around CVE-2025-32434, which bites NLLB because that repo
+# ships only pytorch_model.bin, no safetensors).
+--extra-index-url https://download.pytorch.org/whl/cu126
+torch==2.14.1+cu126
+
 faster-whisper
-transformers
+transformers>=5,<6
 accelerate
 sentencepiece
 sacremoses

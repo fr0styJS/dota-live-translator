@@ -50,8 +50,15 @@ if ($needVenv) {
 }
 if (-not (Test-Path $venvPyw)) { throw "venv looks broken: $venvPyw missing" }
 
-Write-Host "installing requirements (torch cu121 is ~2.5 GB on first run)..." -ForegroundColor Cyan
-& $venvPy -m pip install --upgrade pip --quiet
+Write-Host "installing torch (CUDA 12.6 wheel, ~2.5 GB on first run)..." -ForegroundColor Cyan
+# Explicit index: PyPI's Windows torch is CPU-only, and --extra-index-url alone
+# lets PyPI win the version comparison (that is how you end up with +cpu torch).
+# cu126 needs a reasonably recent driver; cu121 stops at torch 2.5.1, which is
+# too old for transformers 5 and for the torch>=2.6 torch.load guard.
+& $venvPy -m pip install "torch==2.14.1+cu126" --index-url https://download.pytorch.org/whl/cu126
+if ($LASTEXITCODE -ne 0) { throw "torch (cu126) install failed (exit $LASTEXITCODE)" }
+
+Write-Host "installing the rest of requirements..." -ForegroundColor Cyan
 & $venvPy -m pip install -r requirements.txt
 if ($LASTEXITCODE -ne 0) { throw "pip install failed (exit $LASTEXITCODE)" }
 
@@ -59,11 +66,17 @@ if ($LASTEXITCODE -ne 0) { throw "pip install failed (exit $LASTEXITCODE)" }
 & $venvPy -c "import yaml, numpy, psutil, websockets, sounddevice, soundcard, comtypes, silero_vad; print('imports OK')"
 if ($LASTEXITCODE -ne 0) { throw "basic imports failed in the venv" }
 
-Write-Host "checking CUDA torch (first run downloads the CUDA build)..." -ForegroundColor Cyan
-& $venvPy -c "import torch; print('torch', torch.__version__, 'cuda', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'no GPU')"
+Write-Host "checking CUDA torch..." -ForegroundColor Cyan
+& $venvPy -c "import torch; print('torch', torch.__version__, 'cuda-build', torch.version.cuda, 'cuda', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'no GPU')"
+$cudaBuild = (& $venvPy -c "import torch;print(torch.version.cuda or 'none')").Trim()
 $cudaOk = (& $venvPy -c "import torch;print(1 if torch.cuda.is_available() else 0)").Trim() -eq "1"
+if ($cudaBuild -eq "none") {
+  Write-Warning "CPU-only torch is installed (torch.version.cuda is None)."
+  Write-Warning "Re-run: powershell -ExecutionPolicy Bypass -File setup.ps1 -Force"
+  throw "wrong torch build - fix before continuing"
+}
 if (-not $cudaOk) {
-  Write-Warning "No CUDA device visible to torch."
+  Write-Warning "torch has CUDA $cudaBuild but no device is visible (driver missing/outdated?)."
   Write-Warning "Live mode needs an NVIDIA GPU (~4 GB free VRAM). Set asr.device/mt.device to 'cpu' in config.yaml to try anyway (very slow)."
 }
 
@@ -72,8 +85,14 @@ if ($SkipModels) {
   Write-Host "models skipped (-SkipModels); first live run will download them." -ForegroundColor Yellow
 } else {
   Write-Host "warming up models (downloads ~2.5 GB on first run)..." -ForegroundColor Cyan
+  # HF prints progress/warnings on stderr; keep Stop mode from turning that into
+  # a terminating error mid-install.
+  $eap = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
   & $venvPy tools\warmup.py
-  if ($LASTEXITCODE -ne 0) { Write-Warning "warmup exited $LASTEXITCODE - see output above" }
+  $warmExit = $LASTEXITCODE
+  $ErrorActionPreference = $eap
+  if ($warmExit -ne 0) { Write-Warning "warmup exited $warmExit - see output above" }
 }
 
 # --- 5. optional autostart --------------------------------------------------

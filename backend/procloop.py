@@ -289,6 +289,8 @@ class Supervisor:
     self.exe_name = exe_name
     self.emit = emit
     self.log = log
+    self.last_error = None   # set when activation genuinely fails
+    self.capturing = False   # True once a stream is open for a live pid
     self._stop = threading.Event()
     self._thread = threading.Thread(target=self._run, daemon=True,
                                     name="proc-loopback")
@@ -312,8 +314,12 @@ class Supervisor:
         continue
       try:
         client, cap, _emit, _log = open_capture(pid, self.emit, self.log)
+        self.capturing = True
+        self.last_error = None
         self.log(f"process loopback: capturing pid {pid} ({self.exe_name} + children)")
       except Exception as exc:
+        self.capturing = False
+        self.last_error = exc
         self.log(f"process loopback failed for {self.exe_name}: {exc!r}")
         self._stop.wait(3.0)
         continue
@@ -322,6 +328,7 @@ class Supervisor:
       except Exception as exc:
         self.log(f"process loopback stream ended: {exc!r}")
       finally:
+        self.capturing = False
         try:
           client.Stop()
         except Exception:
