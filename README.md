@@ -144,6 +144,36 @@ Attribution is limited by what the feed contains: a playing client only knows
 everyone else appears by slot (`TEAM·P4`). Voice is a single mixed loopback
 stream, so it is labelled `[VOICE]` - no speaker attribution is possible.
 
+## Is this cheating?
+
+No - and the reasoning matters more than the verdict:
+
+- **State and chat come from Game State Integration**, an interface Valve ships
+  and documents for exactly this purpose (overlays and stream tools). Valve's own
+  guidance describes GSI as exposing game state *"without the need to read game
+  memory or risking anti-cheat detection"*. It only carries what your client
+  already has: your own hero, your team's chat, minimap units, objective events.
+- **Voice is captured from the OS audio mixer** (WASAPI process loopback) - it
+  hears what your speakers play, like a hearing aid. Nothing is injected into the
+  game, no game memory is read, no network packet is touched, no input is
+  automated.
+- The tool never plays for you and never shows information your client does not
+  already display. Translating your own comms is an accessibility feature, the
+  same category as subtitles.
+
+Where the line actually is:
+
+- **Tournament and league rules are stricter than the game.** Some define any
+  external translation or overlay as "outside assistance". Check the rules of the
+  event before using it there.
+- **Sharing a Steam account** is a separate terms-of-service problem, and
+  automating an account (a bot that plays or chats on its own) is not what this
+  tool does - don't add it.
+- **Extensions can cross the line.** Reading other players' cooldowns, positions
+  through fog, or automating chat replies would be an unfair advantage. GSI's
+  limits are the safety boundary: it deliberately withholds other players' state
+  from a playing client. Stay inside the data it hands you.
+
 ## Configuration (`config.yaml`)
 
 | Key | Meaning |
