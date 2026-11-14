@@ -154,7 +154,7 @@ chat is full of shorthand:
 
 Attribution is limited by what the feed contains: a playing client only knows
 **your own** slot and hero, so your own lines can be tagged with your hero while
-everyone else appears by slot (`TEAMÃƒâ€šÃ‚Â·P4`). Voice is a single mixed loopback
+everyone else appears by slot (`TEAMÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·P4`). Voice is a single mixed loopback
 stream, so it is labelled `[VOICE]` - no speaker attribution is possible.
 
 ## Is this cheating?
@@ -196,6 +196,21 @@ per team as dropdowns (your own slot already known), and saving writes
 `logs\slots.json`. The backend reads it immediately, so `TEAM-P4` becomes
 `[ARC WARDEN]`; a map made for another match is ignored automatically.
 
+#### Automatic alternative (Valve Web API)
+
+`tools\match_roster.py` fills the same `logs\slots.json` from Valve's API, with
+no clicks:
+
+- `--live` polls `GetTopLiveGame` - only featured/high-MMR games appear there
+- `--latest` / `--match-id N` uses `GetMatchDetails` once a match has ended
+  (this is what "Expose Public Match Data" gates: with it off, matches are not
+  published and your players come back empty)
+
+It needs a free Steam Web API key, read from `STEAM_API_KEY` or
+`%USERPROFILE%\.dota-translator\steam_api_key.txt` - never from the repo. A
+published match cannot be read while it is still running, so this is the route for
+reviewing a finished match (and for the rare featured game that is live-listed),
+not for naming slots during an ordinary pub.
 ## Configuration (`config.yaml`)
 
 | Key | Meaning |
