@@ -36,6 +36,7 @@ KEY_FILES = [pathlib.Path(os.path.expanduser("~")) / ".dota-translator" / "steam
              LOGS / "steam_api_key.txt"]
 STEAM_API = "https://api.steampowered.com"
 OPENDOTA_HEROES = "https://api.opendota.com/api/heroes"
+OPENDOTA_MATCH = "https://api.opendota.com/api/matches"
 UA = {"User-Agent": "dota-live-translator/1.0"}
 STATUS_PRIVATE = 15
 
@@ -124,19 +125,52 @@ def account_id_from_capture() -> str | None:
 
 
 def from_match_details(key: str, match_id: str) -> int:
+  """Valve first (authoritative); OpenDota's mirror when Valve's endpoint 500s."""
   q = urllib.parse.urlencode({"key": key, "match_id": match_id})
   try:
     d = (fetch_json(f"{STEAM_API}/IDOTA2Match_570/GetMatchDetails/v1/?{q}") or {}).get("result") or {}
+    players = d.get("players") or []
+    if players:
+      names = heroes(key)
+      mapping = {str(slot_of(p.get("player_slot", 0))): hero_name(p.get("hero_id", 0), names)
+                 for p in players}
+      print("source: Valve")
+      save(match_id, mapping)
+      return 0
+    print("Valve: match not published (private profile, or not recorded)")
   except RuntimeError as e:
     print(str(e))
+  return from_opendota(match_id)
+
+
+def from_opendota(match_id: str, request_parse: bool = False) -> int:
+  """Public mirror of the same match data. Needs the match to be parsed."""
+  try:
+    d = fetch_json(f"{OPENDOTA_MATCH}/{match_id}")
+  except Exception as e:
+    print(f"opendota: {str(e)[:100]}")
     return 1
   players = d.get("players") or []
   if not players:
-    print("no players in that match: not published, or the account's data is private")
+    print("opendota: match unknown to the mirror (only published matches appear)")
     return 1
-  names = heroes(key)
+  if not any(int(p.get("hero_id") or 0) for p in players):
+    print("opendota: match not parsed yet (hero ids empty). Request parsing with"
+          f" --request-parse and try again in a minute.")
+    if request_parse:
+      try:
+        req = urllib.request.Request(
+          f"https://api.opendota.com/api/request?{urllib.parse.urlencode({'match_id': match_id})}",
+          headers=UA)
+        urllib.request.urlopen(req, timeout=20).close()
+        print("  parse requested")
+      except Exception as e:
+        print(f"  parse request failed: {str(e)[:80]}")
+    return 1
+  names = heroes(None)
   mapping = {str(slot_of(p.get("player_slot", 0))): hero_name(p.get("hero_id", 0), names)
              for p in players}
+  print("source: OpenDota")
   save(match_id, mapping)
   return 0
 
