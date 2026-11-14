@@ -132,9 +132,16 @@ class GsiChat:
   def _handle(self, data: dict) -> None:
     # Who am I? A player's GSI feed only knows your own slot and hero; the names
     # of everyone else's heroes are not exposed (minimap units carry no slot).
-    me_slot = ((data.get("player") or {}).get("player_slot"))
-    my_hero = (data.get("hero") or {}).get("name") or ""
-    my_hero = my_hero.replace("npc_dota_hero_", "").replace("_", " ").upper()
+    # player.player_slot is NOT usable here (it reported 6 for a radiant team_slot
+    # 0); chat player_id is the global slot 0-9 = team_slot + 5 for Dire.
+    pl = data.get("player") or {}
+    try:
+      offset = 5 if str(pl.get("team_name") or "").lower() == "dire" else 0
+      me_slot = None if pl.get("team_slot") is None else int(pl["team_slot"]) + offset
+    except (TypeError, ValueError):
+      me_slot = None
+    my_hero = ((data.get("hero") or {}).get("name") or "").replace("npc_dota_hero_", "")
+    my_hero = my_hero.replace("_", " ").upper()
     for ev in (data.get("events") or []):
       if ev.get("event_type") != "chat_message":
         continue
