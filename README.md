@@ -154,7 +154,7 @@ chat is full of shorthand:
 
 Attribution is limited by what the feed contains: a playing client only knows
 **your own** slot and hero, so your own lines can be tagged with your hero while
-everyone else appears by slot (`TEAMÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·P4`). Voice is a single mixed loopback
+everyone else appears by slot (`TEAMÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·P4`). Voice is a single mixed loopback
 stream, so it is labelled `[VOICE]` - no speaker attribution is possible.
 
 ## Is this cheating?

@@ -1,12 +1,16 @@
 r"""Fill the slot -> hero map from Valve's Web API (post-match, and sometimes live).
 
-Three sources, best first:
+Sources, best first:
   --live              GetTopLiveGame: only featured/high-MMR games are listed
   --match-id N        GetMatchDetails: any published match, once it has ended
-  (default)           your most recent match via GetMatchHistory
+  (default)           your most recent match via GetMatchHistory (needs the account)
 
 Result is written to logs\slots.json, which the backend applies immediately (it is
 ignored when the matchid does not match, so leaving it around is safe).
+
+Requirements: the account must have "Expose Public Match Data" enabled in Dota 2
+(Settings -> Social). With it off, Valve answers status 15 / HTTP 500 and no match
+data exists for anyone to read.
 
 A Steam Web API key is required for the Valve endpoints (free at
 https://steamcommunity.com/dev/apikey). Provide it in this order:
@@ -20,6 +24,7 @@ import json
 import os
 import pathlib
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -32,6 +37,7 @@ KEY_FILES = [pathlib.Path(os.path.expanduser("~")) / ".dota-translator" / "steam
 STEAM_API = "https://api.steampowered.com"
 OPENDOTA_HEROES = "https://api.opendota.com/api/heroes"
 UA = {"User-Agent": "dota-live-translator/1.0"}
+STATUS_PRIVATE = 15
 
 
 def read_key() -> str | None:
@@ -48,10 +54,20 @@ def read_key() -> str | None:
   return None
 
 
-def fetch_json(url: str, timeout=20) -> dict:
+def fetch_json(url: str, timeout=25) -> dict:
   req = urllib.request.Request(url, headers=UA)
-  with urllib.request.urlopen(req, timeout=timeout) as r:
-    return json.loads(r.read().decode("utf-8", "replace"))
+  try:
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+      return json.loads(r.read().decode("utf-8", "replace"))
+  except urllib.error.HTTPError as e:
+    body = e.read().decode("utf-8", "replace")[:120]
+    hint = ""
+    if e.code == 500:
+      hint = ("  (a 500 from GetMatchDetails usually means the match is not published:\n"
+              "   Expose Public Match Data off, or the match has not been recorded)")
+    elif e.code in (401, 403):
+      hint = "  (key rejected - check it was copied whole)"
+    raise RuntimeError(f"HTTP {e.code} from {url.split('?')[0]}{hint}") from None
 
 
 def heroes(key: str | None = None) -> dict[int, str]:
@@ -97,12 +113,26 @@ def save(match_id: str, names_by_slot: dict[str, str]) -> None:
     print(f"  P{slot}: {names_by_slot[slot]}")
 
 
+def account_id_from_capture() -> str | None:
+  """The player's account id appears in the GSI payload the backend dumps."""
+  try:
+    raw = json.loads((LOGS / "gsi-raw.json").read_text(encoding="utf-8"))
+    acct = ((raw.get("player") or {}).get("accountid"))
+    return str(acct) if acct else None
+  except Exception:
+    return None
+
+
 def from_match_details(key: str, match_id: str) -> int:
   q = urllib.parse.urlencode({"key": key, "match_id": match_id})
-  d = (fetch_json(f"{STEAM_API}/IDOTA2Match_570/GetMatchDetails/v1/?{q}") or {}).get("result") or {}
+  try:
+    d = (fetch_json(f"{STEAM_API}/IDOTA2Match_570/GetMatchDetails/v1/?{q}") or {}).get("result") or {}
+  except RuntimeError as e:
+    print(str(e))
+    return 1
   players = d.get("players") or []
   if not players:
-    print("no players in that match: not published yet, or Expose Public Match Data is off")
+    print("no players in that match: not published, or the account's data is private")
     return 1
   names = heroes(key)
   mapping = {str(slot_of(p.get("player_slot", 0))): hero_name(p.get("hero_id", 0), names)
@@ -111,12 +141,25 @@ def from_match_details(key: str, match_id: str) -> int:
   return 0
 
 
-def latest_match(key: str) -> int:
-  q = urllib.parse.urlencode({"key": key, "matches_requested": 1})
-  d = (fetch_json(f"{STEAM_API}/IDOTA2Match_570/GetMatchHistory/v1/?{q}") or {}).get("result") or {}
-  matches = d.get("matches") or []
+def latest_match(key: str, account: str | None) -> int:
+  if not account:
+    account = account_id_from_capture()
+  if not account:
+    print("need --account-id (or a GSI capture with the player's accountid)")
+    return 2
+  q = urllib.parse.urlencode({"key": key, "account_id": account, "matches_requested": 1})
+  try:
+    res = (fetch_json(f"{STEAM_API}/IDOTA2Match_570/GetMatchHistory/v1/?{q}") or {}).get("result") or {}
+  except RuntimeError as e:
+    print(str(e))
+    return 1
+  if res.get("status") == STATUS_PRIVATE:
+    print(f'account {account}: match history is private -> enable "Expose Public Match Data"'
+          " (Dota 2 -> Settings -> Social), then play one match")
+    return 1
+  matches = res.get("matches") or []
   if not matches:
-    print("no recent matches found for this key's account")
+    print(f"account {account}: no matches published yet")
     return 1
   return from_match_details(key, str(matches[0]["match_id"]))
 
@@ -124,7 +167,11 @@ def latest_match(key: str) -> int:
 def from_top_live(key: str, want_match: str | None) -> int:
   """Only featured/high-MMR games appear here - worth a try, often empty."""
   q = urllib.parse.urlencode({"key": key, "partner": 0})
-  d = (fetch_json(f"{STEAM_API}/IDOTA2Match_570/GetTopLiveGame/v1/?{q}") or {}).get("result") or {}
+  try:
+    d = (fetch_json(f"{STEAM_API}/IDOTA2Match_570/GetTopLiveGame/v1/?{q}") or {}).get("result") or {}
+  except RuntimeError as e:
+    print(str(e))
+    return 1
   games = d.get("game_list") or []
   print(f"live games listed: {len(games)}")
   names = heroes(key)
@@ -148,6 +195,7 @@ def main() -> int:
   ap = argparse.ArgumentParser(description="slot -> hero map from the Steam Web API")
   ap.add_argument("--live", action="store_true", help="try GetTopLiveGame")
   ap.add_argument("--match-id", help="fetch that finished match")
+  ap.add_argument("--account-id", help="steam32 account id for --latest")
   ap.add_argument("--latest", action="store_true", help="your most recent match")
   a = ap.parse_args()
 
@@ -162,7 +210,7 @@ def main() -> int:
     return from_top_live(key, a.match_id)
   if a.match_id:
     return from_match_details(key, a.match_id)
-  return latest_match(key)
+  return latest_match(key, a.account_id)
 
 
 if __name__ == "__main__":
