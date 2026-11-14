@@ -59,7 +59,7 @@ CUDA, and warms up (downloads) the models. Useful flags:
 
 The overlay is a normal window: **drag its edges** to show more or fewer lines
 (rows follow the height, one line per utterance), and the size is remembered in
-`logs\overlay.state.json`. Hover it for a hint with the current row count.
+`logs\overlay.state.json`. A pinned header always states how many translation lines are currently rendered.
 `ui.overlay_lines` in `config.yaml` only sets the height on first run.
 
 - Second-monitor page: <http://127.0.0.1:5111>
