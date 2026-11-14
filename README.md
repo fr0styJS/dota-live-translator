@@ -141,7 +141,7 @@ chat is full of shorthand:
 
 Attribution is limited by what the feed contains: a playing client only knows
 **your own** slot and hero, so your own lines can be tagged with your hero while
-everyone else appears by slot (`TEAM·P4`). Voice is a single mixed loopback
+everyone else appears by slot (`TEAMÂ·P4`). Voice is a single mixed loopback
 stream, so it is labelled `[VOICE]` - no speaker attribution is possible.
 
 ## Is this cheating?
@@ -173,6 +173,15 @@ Where the line actually is:
   through fog, or automating chat replies would be an unfair advantage. GSI's
   limits are the safety boundary: it deliberately withholds other players' state
   from a playing client. Stay inside the data it hands you.
+
+### Naming the slots
+
+The feed says *which ten heroes are in the match and on which team* (from the
+minimap), but never which player slot holds which hero - that link only exists in
+the scoreboard. Run `tools\roster.py` once per match: it lists the five heroes
+per team as dropdowns (your own slot already known), and saving writes
+`logs\slots.json`. The backend reads it immediately, so `TEAM-P4` becomes
+`[ARC WARDEN]`; a map made for another match is ignored automatically.
 
 ## Configuration (`config.yaml`)
 

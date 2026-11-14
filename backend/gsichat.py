@@ -13,10 +13,15 @@ their slot number, not a name.
 """
 import http.server
 import json
+import pathlib
 import re
 import threading
 import time
 from collections import deque
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+ROSTER_PATH = ROOT / "logs" / "roster.json"
+SLOTS_PATH = ROOT / "logs" / "slots.json"
 
 CYRILLIC = re.compile(r"[\u0400-\u04FF]")
 UK_CHARS = set("іїєґІЇЄҐ")
@@ -127,6 +132,11 @@ class GsiChat:
     self._server = None
     self._thread = None
     self.lines = 0
+    self.roster = {}        # hero -> team id, from visible minimap units
+    self._roster_logged = None
+    self.matchid = None
+    self._slots_mtime = None
+    self._slots = {}        # "0".."9" -> display name, written by tools/roster.py
 
   # --- http side -----------------------------------------------------------
   def _handle(self, data: dict) -> None:
@@ -142,6 +152,32 @@ class GsiChat:
       me_slot = None
     my_hero = ((data.get("hero") or {}).get("name") or "").replace("npc_dota_hero_", "")
     my_hero = my_hero.replace("_", " ").upper()
+
+    # Roster: every hero the minimap has shown, with its team. Enough to name the
+    # ten heroes in the game - not enough to say which slot holds which (the feed
+    # never links a hero to a player slot for a playing client).
+    changed = False
+    for v in (data.get("minimap") or {}).values():
+      if not isinstance(v, dict):
+        continue
+      un = str(v.get("unitname") or "")
+      if not un.startswith("npc_dota_hero"):
+        continue
+      hero = un.replace("npc_dota_hero_", "")
+      team = v.get("team")
+      if team is not None and self.roster.get(hero) != int(team):
+        self.roster[hero] = int(team)
+        changed = True
+    mid = (data.get("map") or {}).get("matchid")
+    if mid:
+      self.matchid = str(mid)
+    if changed and self.roster != self._roster_logged:
+      self._roster_logged = dict(self.roster)
+      self._write_roster()
+      radiant = sorted(h for h, t in self.roster.items() if t == 2)
+      dire = sorted(h for h, t in self.roster.items() if t == 3)
+      self.log(f"roster seen ({len(self.roster)}/10): "
+               f"RADIANT={radiant} DIRE={dire}")
     for ev in (data.get("events") or []):
       if ev.get("event_type") != "chat_message":
         continue
@@ -161,13 +197,52 @@ class GsiChat:
       self._seen.append(key)
       self._seen_set = set(self._seen)
       pid = ev.get("player_id")
-      if pid is not None and me_slot is not None and pid == me_slot and my_hero:
+      named = self._named_slot(pid)
+      if named:
+        who = named                        # assigned in tools/roster.py
+      elif pid is not None and me_slot is not None and pid == me_slot and my_hero:
         who = my_hero                      # your own line: your hero is known
       elif pid is not None:
         who = f"{label}·P{pid}"            # teammates/enemies: slot only
       else:
         who = label
       self._emit(who, pid, text, ev.get("game_time"))
+
+
+  # --- roster / slot naming --------------------------------------------------
+  def _write_roster(self) -> None:
+    """Publish what we have seen so tools/roster.py can offer the right picks."""
+    try:
+      data = {
+        "matchid": self.matchid,
+        "radiant": sorted(h for h, t in self.roster.items() if t == 2),
+        "dire": sorted(h for h, t in self.roster.items() if t == 3),
+      }
+      ROSTER_PATH.parent.mkdir(parents=True, exist_ok=True)
+      ROSTER_PATH.write_text(json.dumps(data, indent=1), encoding="utf-8")
+    except Exception:
+      pass
+
+  def _named_slot(self, pid):
+    """Display name for a chat slot, from logs/slots.json (per match)."""
+    if pid is None:
+      return None
+    try:
+      mtime = SLOTS_PATH.stat().st_mtime
+    except OSError:
+      self._slots, self._slots_mtime = {}, None
+      return None
+    if mtime != self._slots_mtime:
+      self._slots_mtime = mtime
+      try:
+        raw = json.loads(SLOTS_PATH.read_text(encoding="utf-8"))
+        if not self.matchid or str(raw.get("matchid") or "") in ("", self.matchid):
+          self._slots = {str(k): v for k, v in (raw.get("names") or {}).items() if v}
+        else:
+          self._slots = {}          # map belongs to another match
+      except Exception:
+        self._slots = {}
+    return self._slots.get(str(pid))
 
   def _emit(self, who: str, player_id, text: str, game_time) -> None:
     try:
