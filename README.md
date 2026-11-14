@@ -128,7 +128,11 @@ Dota pushes typed chat in its GSI feed, in `events[]`:
 `channel_type` 12 is team chat, 11 is all chat (mapped in `config.yaml` ->
 `gsi.chat.channels`). Install the config once with
 `tools\gsi_probe.py --write-cfg` and restart the game; it writes one file into
-`game\dota\cfg\gamestate_integration\`. `gsi.port` must match the URI in it.`- gsi.dump_raw: true writes the newest raw payload to logs\gsi-raw.json (every 5 s) so you can inspect exactly what the game sends.
+`game\dota\cfg\gamestate_integration\`. `gsi.port` must match the URI in it.
+
+Set `gsi.dump_raw: true` to have the backend write the newest raw payload to
+`logs\gsi-raw.json` (every 5 s) - useful for reviewing exactly what the game
+sends without running the probe (which cannot bind the port the backend owns).
 
 Translation rules (`backend/gsichat.py`), deliberately conservative because
 chat is full of shorthand:
