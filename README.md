@@ -134,6 +134,16 @@ Set `gsi.dump_raw: true` to have the backend write the newest raw payload to
 `logs\gsi-raw.json` (every 5 s) - useful for reviewing exactly what the game
 sends without running the probe (which cannot bind the port the backend owns).
 
+Cyrillic chat gets one extra step: common Russian slang (`пуш`, `фармим`,
+`мид`, `ульт`, `ганк`, `смоук`, `вард`, `рош` ...) is replaced with the
+English call before translation, because translating it literally gave "пуш сейчас
+или фармим?" -> "now or tomorrow?". Measured before/after:
+
+| chat | raw MT | with slang mapped |
+|---|---|---|
+| `пуш сейчас или фармим?` | "now or tomorrow?" | "push now or farm?" |
+| `идём на мид, они без ульты` | "they're not wearing a suit" | "we're going to mid, they're not ult" |
+| `го смок, ганк топ` | "♪ go smoke, go top ♪" | "go smoke, gank top" |
 ### Objective ticker
 
 `gsi.events.enabled` adds one overlay line per objective event, taken from the
@@ -154,7 +164,7 @@ chat is full of shorthand:
 
 Attribution is limited by what the feed contains: a playing client only knows
 **your own** slot and hero, so your own lines can be tagged with your hero while
-everyone else appears by slot (`TEAMÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·P4`). Voice is a single mixed loopback
+everyone else appears by slot (`TEAMÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·P4`). Voice is a single mixed loopback
 stream, so it is labelled `[VOICE]` - no speaker attribution is possible.
 
 ## Is this cheating?
