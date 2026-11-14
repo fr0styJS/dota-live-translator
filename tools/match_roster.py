@@ -231,6 +231,8 @@ def main() -> int:
   ap.add_argument("--match-id", help="fetch that finished match")
   ap.add_argument("--account-id", help="steam32 account id for --latest")
   ap.add_argument("--latest", action="store_true", help="your most recent match")
+  ap.add_argument("--request-parse", action="store_true",
+                  help="ask OpenDota to parse --match-id, then retry in a minute")
   a = ap.parse_args()
 
   key = read_key()
@@ -242,6 +244,8 @@ def main() -> int:
     return 2
   if a.live:
     return from_top_live(key, a.match_id)
+  if a.match_id and a.request_parse:
+    return from_opendota(a.match_id, request_parse=True)
   if a.match_id:
     return from_match_details(key, a.match_id)
   return latest_match(key, a.account_id)
