@@ -128,7 +128,7 @@ Dota pushes typed chat in its GSI feed, in `events[]`:
 `channel_type` 12 is team chat, 11 is all chat (mapped in `config.yaml` ->
 `gsi.chat.channels`). Install the config once with
 `tools\gsi_probe.py --write-cfg` and restart the game; it writes one file into
-`game\dota\cfg\gamestate_integration\`. `gsi.port` must match the URI in it.
+`game\dota\cfg\gamestate_integration\`. `gsi.port` must match the URI in it.`- gsi.dump_raw: true writes the newest raw payload to logs\gsi-raw.json (every 5 s) so you can inspect exactly what the game sends.
 
 Translation rules (`backend/gsichat.py`), deliberately conservative because
 chat is full of shorthand:
@@ -141,7 +141,7 @@ chat is full of shorthand:
 
 Attribution is limited by what the feed contains: a playing client only knows
 **your own** slot and hero, so your own lines can be tagged with your hero while
-everyone else appears by slot (`TEAMÂ·P4`). Voice is a single mixed loopback
+everyone else appears by slot (`TEAMÃ‚Â·P4`). Voice is a single mixed loopback
 stream, so it is labelled `[VOICE]` - no speaker attribution is possible.
 
 ## Is this cheating?
@@ -206,6 +206,7 @@ ward, smoke, ...) by substituting placeholders before translation.
 | nothing is transcribed, log says `suspended` | `dota2.exe` not running (that is the gate) |
 | log shows `system loopback` instead of `process loopback` | activation failed (Windows too old, or the app renders in exclusive mode); the game's audio is the fallback's job - try a VB-Cable route |
 | `port 5111 in use` | another backend is running: close it, or use `--port` |
+| GSI suddenly sends nothing | try adding `-gamestateintegration` to Dota's launch options: the 11 March 2022 patch note made it mandatory, though on current builds GSI worked here without it |
 | no subtitle window | overlay is a separate process: `ui-overlay\overlay.py`; it pops up bottom-centre of the primary screen |
 | repeated console windows flashing | see `tools/procwatch.ps1` to identify the spawner; this was caused by shelling out to console apps from a windowless process |
 | two python processes per launch | your Python install's venv template is the `py.exe` launcher instead of the interpreter - re-run `setup.ps1`, which restores stock binaries in `.venv\Scripts` |

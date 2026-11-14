@@ -145,7 +145,8 @@ async def run_live(broadcast_async):
           lambda: _aio.ensure_future(broadcast_async(msg)))
 
       chat_listener = GsiChat(int(_gsi.get("port") or 5300), _chat_translate,
-                              _chat_line, channels=_chatcfg.get("channels")).start()
+                              _chat_line, channels=_chatcfg.get("channels"),
+                              dump_raw=bool(_gsi.get("dump_raw"))).start()
     except Exception as _e:
       print(f"chat translation unavailable: {_e!r}", flush=True)
 

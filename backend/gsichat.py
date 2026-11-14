@@ -22,6 +22,7 @@ from collections import deque
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 ROSTER_PATH = ROOT / "logs" / "roster.json"
 SLOTS_PATH = ROOT / "logs" / "slots.json"
+DUMP_PATH = ROOT / "logs" / "gsi-raw.json"
 
 CYRILLIC = re.compile(r"[\u0400-\u04FF]")
 UK_CHARS = set("іїєґІЇЄҐ")
@@ -120,7 +121,8 @@ def detect_lang(text: str, allowed=("ru", "en", "es", "uk", "tl", "pt", "id")) -
 class GsiChat:
   """Minimal HTTP listener for GSI that emits each new chat line once."""
 
-  def __init__(self, port: int, translate, on_line, channels=None, log=print):
+  def __init__(self, port: int, translate, on_line, channels=None, log=print,
+               dump_raw: bool = False):
     """translate(text) -> (lang, english); on_line(dict) publishes a line."""
     self.port = int(port)
     self.translate = translate
@@ -135,11 +137,22 @@ class GsiChat:
     self.roster = {}        # hero -> team id, from visible minimap units
     self._roster_logged = None
     self.matchid = None
+    self.dump_raw = bool(dump_raw)
+    self._last_dump = 0.0
     self._slots_mtime = None
     self._slots = {}        # "0".."9" -> display name, written by tools/roster.py
 
   # --- http side -----------------------------------------------------------
   def _handle(self, data: dict) -> None:
+    if self.dump_raw:
+      now = time.time()
+      if now - self._last_dump >= 5.0:
+        self._last_dump = now
+        try:
+          DUMP_PATH.parent.mkdir(parents=True, exist_ok=True)
+          DUMP_PATH.write_text(json.dumps(data, indent=1), encoding="utf-8")
+        except Exception:
+          pass
     # Who am I? A player's GSI feed only knows your own slot and hero; the names
     # of everyone else's heroes are not exposed (minimap units carry no slot).
     # player.player_slot is NOT usable here (it reported 6 for a radiant team_slot

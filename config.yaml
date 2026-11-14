@@ -25,6 +25,7 @@ ui:
 
 gsi:
   port: 5300          # must match gamestate_integration_*.cfg (tools/gsi_probe.py --write-cfg)
+  dump_raw: false     # true = write the last raw payload to logs/gsi-raw.json (every 5s)
   chat:
     enabled: true     # translate typed chat, not just voice
     channels:         # Dota channel_type -> tag shown in the overlay (verified live)
