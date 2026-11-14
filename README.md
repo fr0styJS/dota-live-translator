@@ -152,6 +152,8 @@ Logs live in `logs/` (`backend.log`, `watch.log`, `watch.heartbeat`,
 .venv\Scripts\python.exe tools\test_mock.py     # HTTP + WS smoke test (no GPU)
 .venv\Scripts\python.exe tools\test_ports.py    # double-start guard
 .venv\Scripts\python.exe tools\audio_probe.py 3 # per-process audio levels
+.venv\Scripts\python.exe tools\gsi_probe.py --write-cfg   # install Dota's GSI feed (needs a game restart)
+.venv\Scripts\python.exe tools\gsi_probe.py             # log what the game actually sends
 ```
 
 See `NOTICE.md` for third-party licences - notably **NLLB-200 is CC-BY-NC-4.0
