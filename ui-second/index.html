@@ -1,5 +1,5 @@
 <!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dota Translator — 2nd monitor</title>
+<title>Dota Translator â€” 2nd monitor</title>
 <style>
 body{background:#0e1116;color:#e6e9ef;font:14px/1.45 system-ui;margin:0;padding:12px}
 h1{font-size:15px;margin:0 0 8px}#status{font-size:12px;color:#8b93a1;margin-bottom:10px}
@@ -7,9 +7,9 @@ h1{font-size:15px;margin:0 0 8px}#status{font-size:12px;color:#8b93a1;margin-bot
 .badge{display:inline-block;font-size:11px;padding:1px 7px;border-radius:20px;margin-right:6px}
 .RU{background:#3b2f2f;color:#ff9d9d}.EN{background:#1f3325;color:#8fe3a8}
 .ES{background:#33301f;color:#f0d67a}.UK{background:#22303f;color:#8fc3ff}.TL{background:#2f2b3d;color:#c9a8ff}.PT{background:#2c3a2e;color:#a8e6c9}
-.src{color:#9aa3b2;font-size:13px}.en{font-size:15px;margin-top:2px}
+.TEAM{background:#1d2b3a;color:#8fc3ff}.ALL{background:#2b2330;color:#d3a8ff}.src{color:#9aa3b2;font-size:13px}.en{font-size:15px;margin-top:2px}
 </style>
-<h1>Dota Live Translator</h1><div id="status">connecting…</div>
+<h1>Dota Live Translator</h1><div id="status">connectingâ€¦</div>
 <div id="help" style="display:none;background:#241d12;border:1px solid #5a441f;border-radius:8px;padding:8px 10px;font-size:13px;margin-bottom:8px">Backend not running. From the repo folder run:<br><code>.venv\Scripts\python.exe backend\app.py</code><br>Then refresh, or wait 10s for auto-retry.</div>
 <div id="log"></div>
 <script>
@@ -18,9 +18,11 @@ const WS_URL = "ws://127.0.0.1:5112";
 const log = document.getElementById("log"), st = document.getElementById("status");
 function add(m){
   const d = document.createElement("div"); d.className = "card";
-  d.innerHTML = `<span class="badge ${m.src}">${m.src}</span><span class="src"></span><div class="en"></div>`;
+  const who = m.who || m.source || "VOICE"; d.innerHTML = `<span class="badge">${who} ${m.src}</span><span class="src"></span><div class="en"></div>`;
   d.querySelector(".src").textContent = m.src_text;
-  d.querySelector(".en").textContent = (m.passthrough ? "[EN] " : "") + m.en + (m.lag != null ? ` (${m.lag}s)` : "");
+  d.querySelector(".en").textContent = m.kind === "chat"
+    ? (m.passthrough ? m.src_text : `${m.src_text} \u2192 ${m.en}`)
+    : (m.passthrough ? "[EN] " : "") + m.en + (m.lag != null ? ` (${m.lag}s)` : "");
   log.prepend(d);
   while (log.children.length > 50) log.lastChild.remove();
 }
@@ -28,23 +30,23 @@ function connect(){
   fails++;
   let ws;
   try { ws = new WebSocket(WS_URL); } catch(e){ offline(); return; }
-  ws.onopen = () => { fails = 0; st.textContent = "live — " + WS_URL; hideHelp(); };
+  ws.onopen = () => { fails = 0; st.textContent = "live â€” " + WS_URL; hideHelp(); };
   ws.onmessage = e => { try { add(JSON.parse(e.data)); } catch(_){} };
   ws.onclose = () => {
     if (fails >= 2) { offline(); return; } // stop loop, show help + demo
-    st.textContent = "reconnecting… (" + fails + ")";
+    st.textContent = "reconnectingâ€¦ (" + fails + ")";
     setTimeout(connect, 2000);
   };
   ws.onerror = () => { try{ws.close();}catch(_){} };
 }
 let demoShown = false;
 function offline(){
-  st.textContent = "backend offline — showing demo, will retry in 10s";
+  st.textContent = "backend offline â€” showing demo, will retry in 10s";
   showHelp();
   if (!demoShown) {
     demoShown = true;
     [["RU","Hello this is an example"],["EN","Missing Tidehunter"],
-     ["RU","Тайд пропал с мида, осторожно"]].forEach(([s,t],i)=>
+     ["RU","Ð¢Ð°Ð¹Ð´ Ð¿Ñ€Ð¾Ð¿Ð°Ð» Ñ Ð¼Ð¸Ð´Ð°, Ð¾ÑÑ‚Ð¾Ñ€Ð¾Ð¶Ð½Ð¾"]].forEach(([s,t],i)=>
       setTimeout(()=>add({src:s,src_text:t,en:t,passthrough:s==="EN"}), 500*(i+1)));
   }
   setTimeout(()=>{ fails = 0; connect(); }, 10000);

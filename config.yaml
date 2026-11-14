@@ -7,7 +7,7 @@ asr:
   model: large-v3-turbo
   compute_type: int8_float16
   device: cuda
-  languages: [ru, en, es, uk, tl, pt]
+  languages: [ru, en, es, uk, tl, pt, id]
 mt:
   model: facebook/nllb-200-distilled-600M
   device: cuda
@@ -22,3 +22,11 @@ glossary_lock: [ss, rosh, gank, b, push, stack, pull, ward, tide, tidehunter, mi
 
 ui:
   overlay_lines: 10   # subtitle lines kept on screen (high-intensity comms need more)
+
+gsi:
+  port: 5300          # must match gamestate_integration_*.cfg (tools/gsi_probe.py --write-cfg)
+  chat:
+    enabled: true     # translate typed chat, not just voice
+    channels:         # Dota channel_type -> tag shown in the overlay (verified live)
+      12: TEAM
+      11: ALL

@@ -116,6 +116,34 @@ Implementation notes worth knowing before you touch `procloop.py`:
 - an app with no render stream yields zero-filled buffers, so judge a stream by
   peak amplitude, not by whether buffers arrive.
 
+## Typed chat (Game State Integration)
+
+Dota pushes typed chat in its GSI feed, in `events[]`:
+
+```json
+{"event_type": "chat_message", "game_time": 1113, "player_id": 4,
+ "channel_type": 12, "message": "tower"}
+```
+
+`channel_type` 12 is team chat, 11 is all chat (mapped in `config.yaml` ->
+`gsi.chat.channels`). Install the config once with
+`tools\gsi_probe.py --write-cfg` and restart the game; it writes one file into
+`game\dota\cfg\gamestate_integration\`. `gsi.port` must match the URI in it.
+
+Translation rules (`backend/gsichat.py`), deliberately conservative because
+chat is full of shorthand:
+
+- Cyrillic is routed by script (ru/uk), which is reliable even for one word.
+- Short lines, abbreviations and misspellings are **never translated** -
+  `twt`, `X D`, `cek ward`, `no mana` stay exactly as typed.
+- Longer lines need a confident, unambiguous language guess; otherwise they stay
+  as typed rather than being garbled.
+
+Attribution is limited by what the feed contains: a playing client only knows
+**your own** slot and hero, so your own lines can be tagged with your hero while
+everyone else appears by slot (`TEAM·P4`). Voice is a single mixed loopback
+stream, so it is labelled `[VOICE]` - no speaker attribution is possible.
+
 ## Configuration (`config.yaml`)
 
 | Key | Meaning |

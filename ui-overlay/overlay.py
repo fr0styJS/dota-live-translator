@@ -132,8 +132,17 @@ root.bind("<Configure>", _on_configure)
 def _entry(m) -> str:
   import datetime
   ts = datetime.datetime.now().strftime("%H:%M:%S")
-  lag = f" ({m['lag']}s)" if m.get("lag") != None else ""
-  text = f"{ts} [{m['src']}] {m['en']}{lag}"
+  lang = m.get("src") or "EN"
+  if m.get("kind") == "chat":
+    who = m.get("who") or m.get("source") or "CHAT"
+    if m.get("passthrough"):
+      body = m.get("src_text") or m.get("en") or ""
+    else:
+      body = f"{m.get('src_text')} → {m.get('en')}"
+    text = f"{ts} [{who}] [{lang}] {body}"
+  else:
+    lag = f" ({m['lag']}s)" if m.get("lag") != None else ""
+    text = f"{ts} [VOICE] [{lang}] {m['en']}{lag}"
   # one entry per line: clip instead of wrapping, so N lines stay N lines
   if len(text) > 150:
     text = text[:149] + "…"

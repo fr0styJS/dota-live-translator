@@ -3,7 +3,8 @@ import time, numpy as np, glossary as G, yaml, pathlib
 CFG = yaml.safe_load(open(pathlib.Path(__file__).parent.parent / "config.yaml", encoding="utf-8-sig"))
 
 NLLB_LANG = {"ru": "rus_Cyrl", "en": "eng_Latn", "es": "spa_Latn",
-             "uk": "ukr_Cyrl", "tl": "tgl_Latn", "pt": "por_Latn"}
+             "uk": "ukr_Cyrl", "tl": "tgl_Latn", "pt": "por_Latn",
+             "id": "ind_Latn"}
 
 async def run_live(broadcast_async):
   import sounddevice as sd
@@ -122,6 +123,32 @@ async def run_live(broadcast_async):
       threading.Thread(target=pump, daemon=True).start()
       capture_kind = "system loopback (everything on the default speaker)"
   print(f"capture: {capture_kind}", flush=True)
+
+  # --- typed chat, straight from Dota's Game State Integration ---------------
+  # Same NLLB model as voice; no ASR involved, so these lines are instant.
+  chat_listener = None
+  _gsi = CFG.get("gsi") or {}
+  _chatcfg = _gsi.get("chat") or {}
+  if _chatcfg.get("enabled", True):
+    try:
+      import asyncio as _aio
+      from gsichat import GsiChat, detect_lang
+      _allowed = tuple((CFG.get("asr") or {}).get("languages") or ("en",))
+      _loop = _aio.get_running_loop()
+
+      def _chat_translate(text):
+        lang = detect_lang(text, _allowed)
+        return lang, (text if lang == "en" else mt_translate(text, lang))
+
+      def _chat_line(msg):
+        _loop.call_soon_threadsafe(
+          lambda: _aio.ensure_future(broadcast_async(msg)))
+
+      chat_listener = GsiChat(int(_gsi.get("port") or 5300), _chat_translate,
+                              _chat_line, channels=_chatcfg.get("channels")).start()
+    except Exception as _e:
+      print(f"chat translation unavailable: {_e!r}", flush=True)
+
   print(f"live. gated on {Cap.TARGET_EXE}: listening only while it runs...", flush=True)
   # Utterance chunking: accumulate while speech, finalize on pause.
   # Old 1.2s sliding windows caused 3-word fragments + duplicate GPU work.
@@ -144,7 +171,7 @@ async def run_live(broadcast_async):
     out = []
     skipped = 0
     for s in segs:
-      # whisper hallucinates names/phrases on music/silence â€” drop low-confidence junk
+      # whisper hallucinates names/phrases on music/silence Ã¢â‚¬â€ drop low-confidence junk
       if getattr(s, "no_speech_prob", 0) > 0.6 or getattr(s, "avg_logprob", 0) < -1.0:
         skipped += 1
         continue
@@ -153,7 +180,7 @@ async def run_live(broadcast_async):
       # known fixed-string hallucinations ("Subtitles by DimaTorzok" etc.)
       if not txt or "torzok" in low or low in (
           "thank you for watching", "thanks for watching", "please subscribe",
-          "bye", "...", "ÑÐ¿Ð°ÑÐ¸Ð±Ð¾ Ð·Ð° Ð¿Ñ€Ð¾ÑÐ¼Ð¾Ñ‚Ñ€", "ÑÑƒÐ±Ñ‚Ð¸Ñ‚Ñ€Ñ‹ ÑÐ´ÐµÐ»Ð°Ð» dimatorzok"):
+          "bye", "...", "Ã‘ÂÃÂ¿ÃÂ°Ã‘ÂÃÂ¸ÃÂ±ÃÂ¾ ÃÂ·ÃÂ° ÃÂ¿Ã‘â‚¬ÃÂ¾Ã‘ÂÃÂ¼ÃÂ¾Ã‘â€šÃ‘â‚¬", "Ã‘ÂÃ‘Æ’ÃÂ±Ã‘â€šÃÂ¸Ã‘â€šÃ‘â‚¬Ã‘â€¹ Ã‘ÂÃÂ´ÃÂµÃÂ»ÃÂ°ÃÂ» dimatorzok"):
         skipped += 1
         continue
       # prompt echo: whisper sometimes repeats our vocab prompt on weak audio.
@@ -184,7 +211,7 @@ async def run_live(broadcast_async):
     if not Cap.is_dota_running():
       idle_n += 1
       if idle_n == 2:
-        print(f"{Cap.TARGET_EXE} not running â€” suspended, 0% GPU. Start it to resume.")
+        print(f"{Cap.TARGET_EXE} not running Ã¢â‚¬â€ suspended, 0% GPU. Start it to resume.")
       buf.clear()
       utter = np.zeros(0, dtype=np.float32)
       silence = 0.0
