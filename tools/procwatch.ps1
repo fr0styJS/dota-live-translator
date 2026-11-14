@@ -1,4 +1,4 @@
-﻿param([int]$Seconds = 90, [int]$IntervalMs = 150)
+param([int]$Seconds = 90, [int]$IntervalMs = 150)
 $root = Split-Path -Parent $PSScriptRoot
 $log = Join-Path $root "logs\procwatch.log"
 New-Item -ItemType Directory -Force -Path (Split-Path $log) | Out-Null

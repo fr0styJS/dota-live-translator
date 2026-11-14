@@ -7,7 +7,7 @@ import time
 
 try:
   import yaml
-  _CFG = yaml.safe_load(open(pathlib.Path(__file__).parent.parent / "config.yaml"))
+  _CFG = yaml.safe_load(open(pathlib.Path(__file__).parent.parent / "config.yaml", encoding="utf-8-sig"))
 except Exception:
   _CFG = {}
 

@@ -57,6 +57,11 @@ CUDA, and warms up (downloads) the models. Useful flags:
 .venv\Scripts\python.exe ui-desktop\app.py        # status window / launcher
 ```
 
+The overlay is a normal window: **drag its edges** to show more or fewer lines
+(rows follow the height, one line per utterance), and the size is remembered in
+`logs\overlay.state.json`. Hover it for a hint with the current row count.
+`ui.overlay_lines` in `config.yaml` only sets the height on first run.
+
 - Second-monitor page: <http://127.0.0.1:5111>
 - WebSocket feed: `ws://127.0.0.1:5112` (JSON: `src`, `src_text`, `en`, `lag`)
 - `--port N` overrides the HTTP port (WS = N+1).

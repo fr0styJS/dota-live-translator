@@ -1,6 +1,6 @@
-﻿"""Live pipeline: loopback -> Silero VAD (CPU) -> faster-whisper (CUDA) -> NLLB (CUDA)."""
+"""Live pipeline: loopback -> Silero VAD (CPU) -> faster-whisper (CUDA) -> NLLB (CUDA)."""
 import time, numpy as np, glossary as G, yaml, pathlib
-CFG = yaml.safe_load(open(pathlib.Path(__file__).parent.parent / "config.yaml"))
+CFG = yaml.safe_load(open(pathlib.Path(__file__).parent.parent / "config.yaml", encoding="utf-8-sig"))
 
 NLLB_LANG = {"ru": "rus_Cyrl", "en": "eng_Latn", "es": "spa_Latn",
              "uk": "ukr_Cyrl", "tl": "tgl_Latn", "pt": "por_Latn"}

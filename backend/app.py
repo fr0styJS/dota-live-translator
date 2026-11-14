@@ -24,7 +24,7 @@ if not _in_project_venv():
         pass
     raise SystemExit(3)
 
-CFG = yaml.safe_load(open(ROOT / "config.yaml"))
+CFG = yaml.safe_load(open(ROOT / "config.yaml", encoding="utf-8-sig"))
 HTTP_PORT = CFG["server"]["port"]
 WS_PORT = HTTP_PORT + 1
 clients = set()
@@ -41,7 +41,7 @@ def broadcast(msg: dict):
 MOCK = [
   ("ru", "Hello this is an example", "Hello this is an example"),
   ("en", "Missing Tidehunter", "Missing Tidehunter"),
-  ("ru", "Тайд пропал с мида, осторожно", "Tide missing from mid, careful"),
+  ("ru", "Ð¢Ð°Ð¹Ð´ Ð¿Ñ€Ð¾Ð¿Ð°Ð» Ñ Ð¼Ð¸Ð´Ð°, Ð¾ÑÑ‚Ð¾Ñ€Ð¾Ð¶Ð½Ð¾", "Tide missing from mid, careful"),
   ("es", "voy a gankear top", "going to gank top"),
 ]
 
@@ -71,7 +71,7 @@ def ports_free() -> str | None:
     try:
       s.bind(("127.0.0.1", p))
     except OSError:
-      return f"port {p} in use — backend already running? Close the other window or kill python backend/app.py, then retry."
+      return f"port {p} in use â€” backend already running? Close the other window or kill python backend/app.py, then retry."
     finally:
       s.close()
   return None

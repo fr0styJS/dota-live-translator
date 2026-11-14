@@ -10,7 +10,7 @@ import sys
 import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-CFG = yaml.safe_load(open(ROOT / "config.yaml"))
+CFG = yaml.safe_load(open(ROOT / "config.yaml", encoding="utf-8-sig"))
 
 dev = (CFG["asr"].get("device") or "cuda").lower()
 mt_dev = (CFG["mt"].get("device") or dev).lower()
