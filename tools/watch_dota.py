@@ -100,8 +100,12 @@ def ws_up() -> bool:
 def proc_running(fragment: str) -> bool:
   try:
     import psutil
-    for p in psutil.process_iter(["cmdline"]):
+    for p in psutil.process_iter(["name", "cmdline"]):
       try:
+        # interpreters only: a shell that merely mentions the path (or a grep for
+        # it) must not count, or the relaunch is skipped for no reason
+        if (p.info.get("name") or "").lower() not in ("python.exe", "pythonw.exe"):
+          continue
         if fragment in " ".join(p.info.get("cmdline") or []):
           return True
       except Exception:
