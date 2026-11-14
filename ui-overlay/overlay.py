@@ -130,24 +130,34 @@ root.bind("<Configure>", _on_configure)
 
 
 def _entry(m) -> str:
+  """One line per message, translation first and the original after it.
+
+      [VOICE]  <english> (2.4s)  [RU] <what was actually said>
+      [TEAM-P4] <english> [ID] <what was typed>
+      [INFO] Roshan killed
+
+  English passthrough shows once (no duplicated text).
+  """
   import datetime
   ts = datetime.datetime.now().strftime("%H:%M:%S")
-  lang = m.get("src") or "EN"
-  if m.get("kind") == "info":
+  lang = (m.get("src") or "EN").upper()
+  kind = m.get("kind")
+
+  if kind == "info":
     text = f"{ts} [INFO] {m.get('en')}"
-  elif m.get("kind") == "chat":
-    who = m.get("who") or m.get("source") or "CHAT"
-    if m.get("passthrough"):
-      body = m.get("src_text") or m.get("en") or ""
-    else:
-      body = f"{m.get('src_text')} → {m.get('en')}"
-    text = f"{ts} [{who}] [{lang}] {body}"
   else:
+    who = "VOICE" if kind != "chat" else (m.get("who") or m.get("source") or "CHAT")
+    en = (m.get("en") or "").strip()
+    orig = (m.get("src_text") or "").strip()
     lag = f" ({m['lag']}s)" if m.get("lag") != None else ""
-    text = f"{ts} [VOICE] [{lang}] {m['en']}{lag}"
+    if m.get("passthrough") or not orig or en.lower() == orig.lower():
+      text = f"{ts} [{who}] [{lang}] {en or orig}{lag}"
+    else:
+      text = f"{ts} [{who}] {en}{lag}  [{lang}] {orig}"
+
   # one entry per line: clip instead of wrapping, so N lines stay N lines
   if len(text) > 150:
-    text = text[:149] + "…"
+    text = text[:149] + "\u2026"
   return text
 
 
