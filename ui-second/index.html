@@ -20,7 +20,7 @@ function add(m){
   const d = document.createElement("div"); d.className = "card";
   const who = m.who || m.source || "VOICE"; d.innerHTML = `<span class="badge">${who} ${m.src}</span><span class="src"></span><div class="en"></div>`;
   d.querySelector(".src").textContent = m.src_text;
-  d.querySelector(".en").textContent = m.kind === "chat"
+  d.querySelector(".en").textContent = m.kind === "info" ? m.en : m.kind === "chat"
     ? (m.passthrough ? m.src_text : `${m.src_text} \u2192 ${m.en}`)
     : (m.passthrough ? "[EN] " : "") + m.en + (m.lag != null ? ` (${m.lag}s)` : "");
   log.prepend(d);

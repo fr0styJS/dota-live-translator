@@ -146,7 +146,9 @@ async def run_live(broadcast_async):
 
       chat_listener = GsiChat(int(_gsi.get("port") or 5300), _chat_translate,
                               _chat_line, channels=_chatcfg.get("channels"),
-                              dump_raw=bool(_gsi.get("dump_raw"))).start()
+                              dump_raw=bool(_gsi.get("dump_raw")),
+                              events_enabled=bool((_gsi.get("events") or {}).get("enabled", True)),
+                              hero_kills=bool((_gsi.get("events") or {}).get("hero_kills", False))).start()
     except Exception as _e:
       print(f"chat translation unavailable: {_e!r}", flush=True)
 

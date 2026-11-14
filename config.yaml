@@ -31,3 +31,6 @@ gsi:
     channels:         # Dota channel_type -> tag shown in the overlay (verified live)
       12: TEAM
       11: ALL
+  events:            # objective ticker in the overlay
+    enabled: true
+    hero_kills: false   # hero kills / sprees too (noisy in teamfights)

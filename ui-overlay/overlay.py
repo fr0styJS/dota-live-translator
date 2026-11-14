@@ -133,7 +133,9 @@ def _entry(m) -> str:
   import datetime
   ts = datetime.datetime.now().strftime("%H:%M:%S")
   lang = m.get("src") or "EN"
-  if m.get("kind") == "chat":
+  if m.get("kind") == "info":
+    text = f"{ts} [INFO] {m.get('en')}"
+  elif m.get("kind") == "chat":
     who = m.get("who") or m.get("source") or "CHAT"
     if m.get("passthrough"):
       body = m.get("src_text") or m.get("en") or ""

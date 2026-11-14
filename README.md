@@ -134,6 +134,15 @@ Set `gsi.dump_raw: true` to have the backend write the newest raw payload to
 `logs\gsi-raw.json` (every 5 s) - useful for reviewing exactly what the game
 sends without running the probe (which cannot bind the port the backend owns).
 
+### Objective ticker
+
+`gsi.events.enabled` adds one overlay line per objective event, taken from the
+same feed: `roshan_killed`, `aegis_picked_up`, `bounty_rune_pickup`, tower
+kills, glyph, scan and sentry kills. Item purchases and pause chatter are ignored
+on purpose - hundreds per match, no information. `gsi.events.hero_kills: true`
+adds hero kills and killing sprees (noisy in teamfights). Lines render as
+`[INFO]` and are deduped across ticks, since every payload repeats the recent
+event list.
 Translation rules (`backend/gsichat.py`), deliberately conservative because
 chat is full of shorthand:
 
@@ -145,7 +154,7 @@ chat is full of shorthand:
 
 Attribution is limited by what the feed contains: a playing client only knows
 **your own** slot and hero, so your own lines can be tagged with your hero while
-everyone else appears by slot (`TEAMÃ‚Â·P4`). Voice is a single mixed loopback
+everyone else appears by slot (`TEAMÃƒâ€šÃ‚Â·P4`). Voice is a single mixed loopback
 stream, so it is labelled `[VOICE]` - no speaker attribution is possible.
 
 ## Is this cheating?

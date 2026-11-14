@@ -25,6 +25,24 @@ SLOTS_PATH = ROOT / "logs" / "slots.json"
 DUMP_PATH = ROOT / "logs" / "gsi-raw.json"
 
 CYRILLIC = re.compile(r"[\u0400-\u04FF]")
+
+# Game feed events worth one line in the overlay. Item purchases and pause
+# chatter are deliberately absent: hundreds per match, all noise here.
+TOP_INFO = {
+  "roshan_killed": "Roshan killed",
+  "aegis_picked_up": "Aegis picked up",
+  "bounty_rune_pickup": "Bounty rune",
+}
+GENERIC_INFO = {
+  "CHAT_MESSAGE_TOWER_KILL": "Tower destroyed",
+  "CHAT_MESSAGE_GLYPH_USED": "Glyph used",
+  "CHAT_MESSAGE_SCAN_USED": "Scan used",
+  "CHAT_MESSAGE_SENTRY_WARD_KILLED": "Sentry ward killed",
+}
+GENERIC_KILLS = {
+  "CHAT_MESSAGE_HERO_KILL": "hero kill",
+  "CHAT_MESSAGE_STREAK_KILL": "killing spree",
+}
 UK_CHARS = set("іїєґІЇЄҐ")
 
 # English Dota shorthand: never worth language-detecting, always passthrough.
@@ -122,7 +140,8 @@ class GsiChat:
   """Minimal HTTP listener for GSI that emits each new chat line once."""
 
   def __init__(self, port: int, translate, on_line, channels=None, log=print,
-               dump_raw: bool = False):
+               dump_raw: bool = False, events_enabled: bool = True,
+               hero_kills: bool = False):
     """translate(text) -> (lang, english); on_line(dict) publishes a line."""
     self.port = int(port)
     self.translate = translate
@@ -138,6 +157,8 @@ class GsiChat:
     self._roster_logged = None
     self.matchid = None
     self.dump_raw = bool(dump_raw)
+    self.events_enabled = bool(events_enabled)
+    self.hero_kills = bool(hero_kills)
     self._last_dump = 0.0
     self._slots_mtime = None
     self._slots = {}        # "0".."9" -> display name, written by tools/roster.py
@@ -193,6 +214,8 @@ class GsiChat:
                f"RADIANT={radiant} DIRE={dire}")
     for ev in (data.get("events") or []):
       if ev.get("event_type") != "chat_message":
+        if self.events_enabled:
+          self._info_event(ev)
         continue
       text = (ev.get("message") or "").strip()
       if not text:
@@ -256,6 +279,43 @@ class GsiChat:
       except Exception:
         self._slots = {}
     return self._slots.get(str(pid))
+
+  def _info_event(self, ev) -> None:
+    """One overlay line for an objective/kill event, deduped across ticks."""
+    etype = ev.get("event_type")
+    label = TOP_INFO.get(etype)
+    raw_data = None
+    if label is None and etype == "generic_event":
+      raw_data = ev.get("data")
+      try:
+        inner = json.loads(raw_data or "{}")
+      except Exception:
+        return
+      itype = inner.get("type")
+      if itype in GENERIC_INFO:
+        label = GENERIC_INFO[itype]
+        who = self._named_slot(inner.get("playerid1"))
+        if who and itype == "CHAT_MESSAGE_TOWER_KILL":
+          label = f"Tower destroyed by {who}"
+      elif itype in GENERIC_KILLS and self.hero_kills:
+        k = self._named_slot(inner.get("playerid1")) or "?"
+        v = self._named_slot(inner.get("playerid2")) or "?"
+        label = (f"{k} killed {v}" if itype == "CHAT_MESSAGE_HERO_KILL"
+                 else f"{k} on a {GENERIC_KILLS[itype]}")
+      if label is None:
+        return
+    if label is None:
+      return
+    key = ("info", etype, ev.get("game_time"), raw_data or "")
+    if key in self._seen_set:
+      return
+    self._seen.append(key)
+    self._seen_set = set(self._seen)
+    self.on_line({
+      "ts": time.time(), "src": "INFO", "src_text": label, "en": label,
+      "passthrough": True, "source": "INFO", "who": "INFO",
+      "game_time": ev.get("game_time"), "kind": "info",
+    })
 
   def _emit(self, who: str, player_id, text: str, game_time) -> None:
     try:
